@@ -1,0 +1,22 @@
+import { Theme } from "../theme.slint";
+import { PageFrame, PageHeader } from "../components/page.slint";
+
+export component SettingsPage {
+    in property <bool> active;
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        VerticalLayout {
+            padding: Theme.unit * 6;
+            spacing: Theme.unit * 6;
+            alignment: start;
+            PageHeader {
+                title: "Настройки";
+                subtitle: "Здесь будут настройки Collecta. Тема — переключатель внизу бокового меню.";
+            }
+        }
+    }
+}

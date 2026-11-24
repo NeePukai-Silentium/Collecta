@@ -1,0 +1,53 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+export component CheckBox {
+    in property <string> text;
+    in-out property <bool> checked;
+    // Round mark, for picking one of several (radio button).
+    in property <bool> round;
+    callback toggled(checked: bool);
+
+    property <length> box: Theme.icon-size + Theme.unit;
+
+    height: Theme.control-height;
+
+    HorizontalLayout {
+        spacing: Theme.unit * 2;
+        alignment: start;
+        Rectangle {
+            width: root.box;
+            height: root.box;
+            y: (parent.height - self.height) / 2;
+            border-radius: root.round ? self.width / 2 : Theme.radius-small;
+            background: root.checked ? Theme.color.accent : Theme.color.surface;
+            border-width: root.checked ? 0 : Theme.hairline;
+            border-color: touch.has-hover ? Theme.color.text-muted : Theme.color.border;
+            animate background { duration: Theme.anim; easing: Motion.easing; }
+            Icon {
+                width: Theme.icon-size * 0.75;
+                height: self.width;
+                source: Icons.check;
+                colorize: Theme.color.bg;
+                opacity: root.checked ? 1 : 0;
+                animate opacity { duration: Theme.anim; easing: Motion.easing; }
+            }
+        }
+
+        if root.text != "": Text {
+            text: root.text;
+            color: Theme.color.text;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.checked = root.round || !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}

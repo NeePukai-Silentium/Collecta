@@ -1,0 +1,111 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// A picture tile of the gallery. Without a picture it is a plain grey tile.
+// In the detailed mode the bottom `caption-height` holds the name and size.
+export component Thumbnail {
+    in property <image> image;
+    in property <bool> has-image;
+    in property <bool> selected;
+    in property <bool> favorite;
+    in property <bool> detailed;
+    in property <string> name;
+    in property <string> info;
+    in property <length> caption-height;
+    callback clicked(control: bool, shift: bool);
+    callback context(x: length, y: length);
+
+    out property <length> picture-height: root.detailed ? root.height - root.caption-height : root.height;
+
+    Rectangle {
+        height: root.picture-height;
+        y: 0;
+        border-radius: Theme.radius-small;
+        clip: true;
+        background: Theme.color.surface-active;
+        if root.has-image: Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.image;
+            image-fit: cover;
+        }
+        Rectangle {
+            background: Theme.color.text.with-alpha(touch.has-hover ? 0.08 : 0);
+            animate background { duration: Theme.anim; easing: Motion.easing; }
+        }
+    }
+
+    Rectangle {
+        height: root.picture-height;
+        y: 0;
+        border-radius: Theme.radius-small;
+        border-width: root.selected ? Theme.unit / 2 : 0;
+        border-color: Theme.color.accent;
+        background: Theme.color.accent.with-alpha(root.selected ? 0.18 : 0);
+        animate background { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    if root.selected: Rectangle {
+        x: Theme.unit * 2;
+        y: Theme.unit * 2;
+        width: Theme.icon-size + Theme.unit;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: Theme.color.accent;
+        Icon {
+            width: Theme.icon-size * 0.75;
+            height: self.width;
+            source: Icons.check;
+            colorize: Theme.color.bg;
+        }
+    }
+
+    if root.favorite: Rectangle {
+        x: parent.width - self.width - Theme.unit * 2;
+        y: Theme.unit * 2;
+        width: Theme.icon-size + Theme.unit * 2;
+        height: self.width;
+        border-radius: self.width / 2;
+        background: Theme.color.surface.with-alpha(0.85);
+        Icon {
+            width: Theme.icon-size * 0.75;
+            height: self.width;
+            source: Icons.heart;
+            colorize: Theme.color.accent;
+        }
+    }
+
+    if root.detailed: VerticalLayout {
+        y: root.picture-height;
+        height: root.caption-height;
+        padding-top: Theme.unit * 2;
+        alignment: start;
+        Text {
+            text: root.name;
+            color: Theme.color.text;
+            font-size: Theme.font-size;
+            overflow: elide;
+        }
+
+        Text {
+            text: root.info;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+            overflow: elide;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                if event.button == PointerEventButton.left {
+                    root.clicked(event.modifiers.control, event.modifiers.shift);
+                } else if event.button == PointerEventButton.right {
+                    root.context(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                }
+            }
+        }
+    }
+}

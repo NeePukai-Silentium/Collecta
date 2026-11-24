@@ -1,0 +1,69 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// Pill with a tag or category name. Optional counter and remove cross.
+export component TagChip {
+    in property <string> text;
+    in property <string> count;
+    in property <bool> selected;
+    in property <bool> removable;
+    callback clicked;
+    callback removed;
+
+    height: Theme.control-height - Theme.unit * 2;
+
+    Rectangle {
+        border-radius: self.height / 2;
+        background: root.selected ? Theme.color.accent.with-alpha(0.18) : touch.has-hover ? Theme.color.surface-hover : Theme.color.surface;
+        border-width: Theme.hairline;
+        border-color: root.selected ? Theme.color.accent : Theme.color.border;
+        animate background, border-color { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.unit * 3;
+        padding-right: root.removable ? Theme.unit : Theme.unit * 3;
+        spacing: Theme.unit * 2;
+        Text {
+            text: root.text;
+            color: root.selected ? Theme.color.accent : Theme.color.text;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+
+        if root.count != "": Text {
+            text: root.count;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+        if root.removable: Rectangle {
+            width: root.height - Theme.unit * 2;
+            height: self.width;
+            y: (parent.height - self.height) / 2;
+            border-radius: self.height / 2;
+            background: remove.has-hover ? Theme.color.surface-active : transparent;
+            Icon {
+                width: Theme.icon-size * 0.75;
+                height: self.width;
+                source: Icons.x;
+                colorize: Theme.color.text-muted;
+            }
+
+            remove := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.removed();
+                }
+            }
+        }
+    }
+}

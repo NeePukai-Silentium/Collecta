@@ -1,0 +1,62 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icon } from "icon.slint";
+
+export struct Segment {
+    icon: image,
+    text: string,
+}
+
+// A row of equal parts, one of them chosen. The highlight slides to the chosen part.
+export component Segmented {
+    in property <[Segment]> items;
+    in-out property <int> selected;
+    in property <length> segment-width: Theme.control-height;
+    callback changed(index: int);
+
+    width: root.segment-width * root.items.length + Theme.unit;
+    height: Theme.control-height;
+
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: Theme.color.surface;
+        border-width: Theme.hairline;
+        border-color: Theme.color.border;
+    }
+
+    Rectangle {
+        x: Theme.unit / 2 + root.selected * root.segment-width;
+        y: Theme.unit / 2;
+        width: root.segment-width;
+        height: parent.height - Theme.unit;
+        border-radius: Theme.radius-small - Theme.unit / 2;
+        background: Theme.color.surface-active;
+        animate x { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    for item[index] in root.items: Rectangle {
+        x: Theme.unit / 2 + index * root.segment-width;
+        width: root.segment-width;
+        if item.icon.width > 0: Icon {
+            source: item.icon;
+            colorize: root.selected == index ? Theme.color.accent : touch.has-hover ? Theme.color.text : Theme.color.text-muted;
+            animate colorize { duration: Theme.anim; easing: Motion.easing; }
+        }
+        if item.text != "": Text {
+            text: item.text;
+            color: root.selected == index ? Theme.color.text : Theme.color.text-muted;
+            font-size: Theme.font-size;
+            font-weight: root.selected == index ? 600 : 400;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+        touch := TouchArea {
+            mouse-cursor: pointer;
+            clicked => {
+                if root.selected != index {
+                    root.selected = index;
+                    root.changed(index);
+                }
+            }
+        }
+    }
+}

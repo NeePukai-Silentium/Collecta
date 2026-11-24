@@ -1,0 +1,21 @@
+import { Theme, Motion } from "../theme.slint";
+
+export component ProgressBar {
+    // 0..1
+    in property <float> progress;
+
+    height: Theme.unit * 1.5;
+
+    Rectangle {
+        border-radius: self.height / 2;
+        background: Theme.color.surface-active;
+    }
+
+    Rectangle {
+        x: 0;
+        width: parent.width * clamp(root.progress, 0, 1);
+        border-radius: self.height / 2;
+        background: Theme.color.accent;
+        animate width { duration: Theme.anim; easing: Motion.easing; }
+    }
+}

@@ -1,0 +1,202 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AppState, DupGroup, DupFile } from "../state.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { CheckBox } from "../components/checkbox.slint";
+import { Segmented } from "../components/segmented.slint";
+import { TagChip } from "../components/tag-chip.slint";
+import { ScrollArea } from "../components/scroll-area.slint";
+import { PageFrame, PageHeader, Card, Cover } from "../components/page.slint";
+
+component DupFileCard {
+    in property <DupFile> file;
+    in property <bool> keep;
+    callback chosen;
+
+    width: Theme.thumb-size * 1.25;
+
+    Rectangle {
+        border-radius: Theme.radius;
+        border-width: root.keep ? Theme.unit / 2 : Theme.hairline;
+        border-color: root.keep ? Theme.color.accent : Theme.color.border;
+        background: root.keep ? Theme.color.accent.with-alpha(0.08) : transparent;
+        animate background, border-color { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    VerticalLayout {
+        padding: Theme.unit * 2;
+        spacing: Theme.unit * 2;
+        Cover {
+            height: Theme.thumb-size * 0.75;
+            source: root.file.image;
+            has-image: root.file.has-image;
+        }
+
+        VerticalLayout {
+            padding-left: Theme.unit;
+            padding-right: Theme.unit;
+            Text {
+                text: root.file.name;
+                color: Theme.color.text;
+                font-size: Theme.font-size;
+                font-weight: 600;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.file.resolution + " · " + root.file.size + " · " + root.file.format;
+                color: Theme.color.text;
+                font-size: Theme.font-size;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.file.path;
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+                wrap: word-wrap;
+            }
+        }
+
+        CheckBox {
+            round: true;
+            text: root.keep ? "Оригинал" : "Оставить этот";
+            checked: root.keep;
+            toggled => {
+                root.chosen();
+            }
+        }
+    }
+}
+
+component DupGroupCard inherits Card {
+    in property <DupGroup> group;
+    in property <bool> similar;
+    in property <int> index;
+
+    VerticalLayout {
+        padding: Theme.unit * 4;
+        spacing: Theme.unit * 3;
+        HorizontalLayout {
+            spacing: Theme.unit * 3;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                Text {
+                    text: root.group.title;
+                    color: Theme.color.text;
+                    font-size: Theme.font-size;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+
+                Text {
+                    text: root.group.note;
+                    color: Theme.color.text-muted;
+                    font-size: Theme.font-size;
+                }
+            }
+
+            Button {
+                kind: ButtonKind.ghost;
+                icon: Icons.trash-2;
+                text: root.similar ? "Удалить лишнее" : "Удалить лишние";
+                clicked => {
+                    AppState.dup-remove(root.similar, root.index);
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.unit * 3;
+            alignment: start;
+            for file[file-index] in root.group.files: DupFileCard {
+                file: file;
+                keep: root.group.keep == file-index;
+                chosen => {
+                    AppState.dup-keep(root.similar, root.index, file-index);
+                }
+            }
+        }
+    }
+}
+
+export component DuplicatesPage {
+    in property <bool> active;
+
+    property <[DupGroup]> groups: AppState.similar-tab ? AppState.similar-groups : AppState.exact-groups;
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        ScrollArea {
+
+            width: parent.width;
+
+            height: parent.height;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: parent.width;
+                padding: Theme.unit * 6;
+                spacing: Theme.unit * 4;
+                PageHeader {
+                    title: "Дубликаты";
+                    subtitle: AppState.similar-tab
+                        ? "Похожие изображения находятся по содержимому и не всегда копии — Collecta сама их не удаляет."
+                        : "Точные копии: файлы совпадают байт в байт.";
+                    if AppState.library >= 0: TagChip {
+                        y: (parent.height - self.height) / 2;
+                        text: "Только «" + AppState.libraries[AppState.library].name + "»";
+                        selected: true;
+                        removable: true;
+                        removed => {
+                            AppState.select-library(-1);
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: Theme.unit * 3;
+                    Segmented {
+                        segment-width: Theme.sidebar-width / 2;
+                        items: [{ text: "Точные" }, { text: "Похожие" }];
+                        selected: AppState.similar-tab ? 1 : 0;
+                        changed(index) => {
+                            AppState.similar-tab = index == 1;
+                        }
+                    }
+
+                    Text {
+                        horizontal-stretch: 1;
+                        text: AppState.similar-tab ? AppState.similar-summary : AppState.exact-summary;
+                        color: Theme.color.text-muted;
+                        font-size: Theme.font-size;
+                        vertical-alignment: center;
+                    }
+
+                    if !AppState.similar-tab && AppState.exact-groups.length > 0: Button {
+                        kind: ButtonKind.danger;
+                        icon: Icons.trash-2;
+                        text: "Удалить лишние";
+                        clicked => {
+                            AppState.dup-remove(false, -1);
+                        }
+                    }
+                }
+
+                for group[index] in root.groups: DupGroupCard {
+                    group: group;
+                    similar: AppState.similar-tab;
+                    index: index;
+                }
+
+                if root.groups.length == 0: Text {
+                    text: "Дубликатов не найдено.";
+                    color: Theme.color.text-muted;
+                    font-size: Theme.font-size;
+                }
+            }
+        }
+    }
+}

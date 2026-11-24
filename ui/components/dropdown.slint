@@ -1,0 +1,59 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// Looks like a button with the current value. The list itself is a PopupMenu shown by the window:
+// `clicked` passes where it should appear (window coordinates, under the dropdown).
+export component Dropdown {
+    in property <image> icon;
+    in property <string> label;
+    in property <string> value;
+    in property <bool> open;
+    callback clicked(x: length, y: length, width: length);
+
+    height: Theme.control-height;
+
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: touch.has-hover ? Theme.color.surface-hover : Theme.color.surface;
+        border-width: Theme.hairline;
+        border-color: root.open ? Theme.color.accent : Theme.color.border;
+        animate background, border-color { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.unit * 3;
+        padding-right: Theme.unit * 2;
+        spacing: Theme.unit * 2;
+        if root.icon.width > 0: Icon {
+            y: (parent.height - self.height) / 2;
+            source: root.icon;
+            colorize: Theme.color.text-muted;
+        }
+        if root.label != "": Text {
+            text: root.label;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+        Text {
+            text: root.value;
+            color: Theme.color.text;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+
+        Icon {
+            y: (parent.height - self.height) / 2;
+            source: Icons.chevron-down;
+            colorize: root.open ? Theme.color.accent : Theme.color.text-muted;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked(root.absolute-position.x, root.absolute-position.y + root.height + Theme.unit, root.width);
+        }
+    }
+}

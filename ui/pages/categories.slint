@@ -1,0 +1,91 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AppState } from "../state.slint";
+import { Button } from "../components/button.slint";
+import { ScrollArea } from "../components/scroll-area.slint";
+import { PageFrame, PageHeader, Cover, Grid } from "../components/page.slint";
+
+export component CategoriesPage {
+    in property <bool> active;
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        ScrollArea {
+
+            width: parent.width;
+
+            height: parent.height;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: parent.width;
+                padding: Theme.unit * 6;
+                spacing: Theme.unit * 6;
+                PageHeader {
+                    title: "Категории";
+                    subtitle: "Крупные группы библиотеки. У изображения одна категория.";
+                    Button {
+                        icon: Icons.plus;
+                        text: "Новая категория";
+                        clicked => {
+                            AppState.create("category");
+                        }
+                    }
+                }
+
+                grid := Rectangle {
+                    property <length> gap: Theme.unit * 4;
+                    property <int> columns: Grid.columns(self.width, Theme.thumb-size, self.gap);
+                    property <length> card-width: Grid.cell(self.width, self.columns, self.gap);
+                    property <length> card-height: self.card-width * 3 / 4 + Theme.unit * 2 + Theme.font-size * 3;
+                    height: Grid.rows(AppState.categories.length, self.columns) * (self.card-height + self.gap) - self.gap;
+
+                    for category[index] in AppState.categories: Rectangle {
+                        x: mod(index, grid.columns) * (grid.card-width + grid.gap);
+                        y: floor(index / grid.columns) * (grid.card-height + grid.gap);
+                        width: grid.card-width;
+                        height: grid.card-height;
+
+                        VerticalLayout {
+                            spacing: Theme.unit * 2;
+                            Cover {
+                                height: grid.card-width * 3 / 4;
+                                source: category.cover;
+                                has-image: category.has-cover;
+                                Rectangle {
+                                    background: Theme.color.text.with-alpha(touch.has-hover ? 0.08 : 0);
+                                    animate background { duration: Theme.anim; easing: Motion.easing; }
+                                }
+                            }
+
+                            VerticalLayout {
+                                Text {
+                                    text: category.name;
+                                    color: Theme.color.text;
+                                    font-size: Theme.font-size;
+                                    font-weight: 600;
+                                    overflow: elide;
+                                }
+
+                                Text {
+                                    text: category.count;
+                                    color: Theme.color.text-muted;
+                                    font-size: Theme.font-size;
+                                }
+                            }
+                        }
+
+                        touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                AppState.category-clicked(index);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

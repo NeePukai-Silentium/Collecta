@@ -1,0 +1,236 @@
+// What the window shows and what it asks the Rust side to do. All data here is made up (src/mock.rs).
+
+import { MenuEntry } from "components/context-menu.slint";
+
+export { MenuEntry }
+
+export enum Page { home, all, albums, album, tags, categories, favorites, duplicates, import, settings }
+
+export enum GalleryKind { all, favorites, album, recent }
+
+export struct Tile {
+    id: int,
+    image: image,
+    has-image: bool,
+    x: length,
+    y: length,
+    width: length,
+    height: length,
+    name: string,
+    info: string,
+    selected: bool,
+    favorite: bool,
+}
+
+export struct Gallery {
+    tiles: [Tile],
+    height: length,
+    status: string,
+}
+
+export struct Thumb {
+    id: int,
+    image: image,
+    has-image: bool,
+    // width / height
+    ratio: float,
+}
+
+export struct LibraryCard {
+    // Count for the side menu, e.g. "412".
+    total: string,
+    name: string,
+    count: string,
+    size: string,
+    sources: string,
+    scanned: string,
+    cover: image,
+    has-cover: bool,
+}
+
+export struct Album {
+    id: int,
+    name: string,
+    count: string,
+    date: string,
+    description: string,
+    cover: image,
+    has-cover: bool,
+    favorite: bool,
+}
+
+export struct AlbumGroup {
+    name: string,
+    albums: [Album],
+}
+
+export struct TagItem {
+    name: string,
+    count: string,
+}
+
+export struct CategoryItem {
+    name: string,
+    count: string,
+    cover: image,
+    has-cover: bool,
+}
+
+export struct DupFile {
+    image: image,
+    has-image: bool,
+    name: string,
+    resolution: string,
+    size: string,
+    format: string,
+    path: string,
+}
+
+export struct DupGroup {
+    files: [DupFile],
+    keep: int,
+    title: string,
+    note: string,
+}
+
+export struct ImportLibrary {
+    name: string,
+    count: string,
+    sources: [string],
+    excluded: [string],
+}
+
+export struct QuickInfo {
+    name: string,
+    resolution: string,
+    size: string,
+    format: string,
+    date: string,
+    path: string,
+    library: string,
+    category: string,
+    tags: [string],
+    albums: [string],
+    favorite: bool,
+}
+
+export global AppState {
+    in-out property <Page> page: Page.home;
+    // -1: all libraries together.
+    in-out property <int> library: -1;
+    in-out property <string> search;
+    in property <[LibraryCard]> libraries;
+
+    // Gallery view settings, shared by "All images", "Favorites" and an open album.
+    in-out property <int> sort: 1;
+    in-out property <bool> masonry;
+    in-out property <bool> detailed;
+    in-out property <float> thumb-scale: 1;
+    in-out property <bool> tags-and: true;
+    in property <string> category-filter;
+    in property <string> tag-filter;
+    in property <[string]> filters;
+    in property <Gallery> all-gallery;
+    in property <Gallery> favorites-gallery;
+    in property <Gallery> album-gallery;
+
+    in property <[Thumb]> recent;
+    in property <[Album]> favorite-albums;
+    in property <[AlbumGroup]> album-groups;
+    in property <Album> current-album;
+    in property <[TagItem]> tags;
+    in property <[CategoryItem]> categories;
+
+    in-out property <bool> similar-tab;
+    in property <[DupGroup]> exact-groups;
+    in property <[DupGroup]> similar-groups;
+    in property <string> exact-summary;
+    in property <string> similar-summary;
+
+    in property <[ImportLibrary]> import-libraries;
+    in-out property <bool> scan-recursive: true;
+    in-out property <bool> scan-skip-system: true;
+    in property <bool> scanning;
+    in property <bool> scan-finished;
+    in property <float> scan-progress;
+    in property <string> scan-folder;
+    in property <string> scan-counter;
+    in property <string> scan-result;
+    in property <[string]> missing-files;
+
+    in-out property <bool> quick-open;
+    in property <image> quick-image;
+    in property <bool> quick-has-image;
+    in property <float> quick-ratio: 1;
+    // The tile it grows from, window coordinates. Zero width: grows from the middle.
+    in property <length> quick-from-x;
+    in property <length> quick-from-y;
+    in property <length> quick-from-width;
+    in property <length> quick-from-height;
+    in property <QuickInfo> quick-info;
+    // "3 из 128"
+    in property <string> quick-counter;
+    in-out property <string> quick-description;
+
+    in-out property <bool> menu-open;
+    in property <string> menu-kind;
+    in property <[MenuEntry]> menu-entries;
+    in property <bool> menu-checks;
+    in property <length> menu-x;
+    in property <length> menu-y;
+    in property <length> menu-width;
+    in-out property <int> submenu-of: -1;
+    in property <[MenuEntry]> submenu-entries;
+
+    // "" — no dialog; otherwise its kind, the Rust side knows what to do on confirm.
+    in-out property <string> dialog;
+    in property <string> dialog-title;
+    in property <string> dialog-text;
+    in property <string> dialog-confirm;
+    in property <bool> dialog-danger;
+    in property <bool> dialog-has-input;
+    in-out property <string> dialog-input;
+    in-out property <string> new-library-name;
+    in property <[string]> new-library-sources;
+    in property <[string]> new-library-excluded;
+
+    in property <string> toast;
+    in property <bool> toast-shown;
+
+    callback navigate(page: Page);
+    callback select-library(index: int);
+    callback search-edited(text: string);
+    callback view-changed();
+    callback relayout(kind: GalleryKind, width: length, thumb: length, caption: length, gap: length, masonry: bool);
+    // x, y, width, height: where the tile is in the window, quick view grows from there.
+    callback tile-clicked(kind: GalleryKind, id: int, control: bool, shift: bool, x: length, y: length, width: length, height: length);
+    callback tile-context(kind: GalleryKind, id: int, x: length, y: length);
+    callback quick-open-selected(kind: GalleryKind);
+    callback quick-step(delta: int);
+    callback quick-close();
+    callback quick-favorite();
+    callback quick-pictora();
+    callback quick-description-edited(text: string);
+    callback show-menu(kind: string, x: length, y: length, width: length);
+    callback menu-activated(index: int);
+    callback submenu-requested(index: int);
+    callback submenu-activated(index: int);
+    callback remove-filter(index: int);
+    callback clear-filters();
+    callback open-album(id: int);
+    callback create(kind: string);
+    callback tag-clicked(name: string);
+    callback category-clicked(index: int);
+    callback dup-keep(similar: bool, group: int, file: int);
+    callback dup-remove(similar: bool, group: int);
+    callback scan-start();
+    callback scan-cancel();
+    callback folder-add(library: int, excluded: bool);
+    callback folder-remove(library: int, excluded: bool, index: int);
+    callback library-remove(index: int);
+    callback add-library();
+    callback new-library-folder-add(excluded: bool);
+    callback new-library-folder-remove(excluded: bool, index: int);
+    callback dialog-confirmed();
+    callback dialog-cancelled();
+}

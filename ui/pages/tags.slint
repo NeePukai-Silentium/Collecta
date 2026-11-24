@@ -1,0 +1,94 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AppState } from "../state.slint";
+import { Icon } from "../components/icon.slint";
+import { Button } from "../components/button.slint";
+import { ScrollArea } from "../components/scroll-area.slint";
+import { PageFrame, PageHeader, Grid } from "../components/page.slint";
+
+export component TagsPage {
+    in property <bool> active;
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        ScrollArea {
+
+            width: parent.width;
+
+            height: parent.height;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: parent.width;
+                padding: Theme.unit * 6;
+                spacing: Theme.unit * 6;
+                PageHeader {
+                    title: "Теги";
+                    subtitle: "У изображения может быть сколько угодно тегов. Нажмите на тег — откроются его изображения.";
+                    Button {
+                        icon: Icons.plus;
+                        text: "Новый тег";
+                        clicked => {
+                            AppState.create("tag");
+                        }
+                    }
+                }
+
+                list := Rectangle {
+                    property <length> gap: Theme.unit * 2;
+                    property <int> columns: Grid.columns(self.width, Theme.sidebar-width, self.gap);
+                    property <length> cell-width: Grid.cell(self.width, self.columns, self.gap);
+                    height: Grid.rows(AppState.tags.length, self.columns) * (Theme.control-height + Theme.unit * 2 + self.gap) - self.gap;
+
+                    for tag[index] in AppState.tags: Rectangle {
+                        x: mod(index, list.columns) * (list.cell-width + list.gap);
+                        y: floor(index / list.columns) * (Theme.control-height + Theme.unit * 2 + list.gap);
+                        width: list.cell-width;
+                        height: Theme.control-height + Theme.unit * 2;
+                        border-radius: Theme.radius-small;
+                        background: touch.has-hover ? Theme.color.surface-hover : Theme.color.surface;
+                        border-width: Theme.hairline;
+                        border-color: Theme.color.border;
+                        animate background { duration: Theme.anim; easing: Motion.easing; }
+
+                        touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                AppState.tag-clicked(tag.name);
+                            }
+                        }
+
+                        HorizontalLayout {
+                            padding-left: Theme.unit * 3;
+                            padding-right: Theme.unit * 3;
+                            spacing: Theme.unit * 2;
+                            Icon {
+                                y: (parent.height - self.height) / 2;
+                                source: Icons.tag;
+                                colorize: Theme.color.text-muted;
+                            }
+
+                            Text {
+                                horizontal-stretch: 1;
+                                text: tag.name;
+                                color: Theme.color.text;
+                                font-size: Theme.font-size;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+
+                            Text {
+                                text: tag.count;
+                                color: Theme.color.text-muted;
+                                font-size: Theme.font-size;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

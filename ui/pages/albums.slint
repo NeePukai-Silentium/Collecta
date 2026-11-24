@@ -1,0 +1,142 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AppState, Album } from "../state.slint";
+import { Icon } from "../components/icon.slint";
+import { Button } from "../components/button.slint";
+import { ScrollArea } from "../components/scroll-area.slint";
+import { PageFrame, PageHeader, SectionTitle, Cover, Grid } from "../components/page.slint";
+
+export component AlbumCard {
+    in property <Album> album;
+    callback clicked;
+
+    VerticalLayout {
+        spacing: Theme.unit * 2;
+        Cover {
+            height: root.width * 2 / 3;
+            source: root.album.cover;
+            has-image: root.album.has-cover;
+            Rectangle {
+                background: Theme.color.text.with-alpha(touch.has-hover ? 0.08 : 0);
+                animate background { duration: Theme.anim; easing: Motion.easing; }
+            }
+
+            if root.album.favorite: Rectangle {
+                x: parent.width - self.width - Theme.unit * 2;
+                y: Theme.unit * 2;
+                width: Theme.icon-size + Theme.unit * 2;
+                height: self.width;
+                border-radius: self.width / 2;
+                background: Theme.color.surface.with-alpha(0.85);
+                Icon {
+                    width: Theme.icon-size * 0.75;
+                    height: self.width;
+                    source: Icons.heart;
+                    colorize: Theme.color.accent;
+                }
+            }
+        }
+
+        VerticalLayout {
+            Text {
+                text: root.album.name;
+                color: Theme.color.text;
+                font-size: Theme.font-size;
+                font-weight: 600;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.album.count + " · " + root.album.date;
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+                overflow: elide;
+            }
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+export component AlbumGrid {
+    in property <[Album]> albums;
+
+    property <length> gap: Theme.unit * 4;
+    property <int> columns: Grid.columns(root.width, Theme.thumb-size, root.gap);
+    property <length> card-width: Grid.cell(root.width, root.columns, root.gap);
+    property <length> card-height: root.card-width * 2 / 3 + Theme.unit * 2 + Theme.font-size * 3;
+
+    height: Grid.rows(root.albums.length, root.columns) * (root.card-height + root.gap) - root.gap;
+
+    for album[index] in root.albums: AlbumCard {
+        x: mod(index, root.columns) * (root.card-width + root.gap);
+        y: floor(index / root.columns) * (root.card-height + root.gap);
+        width: root.card-width;
+        height: root.card-height;
+        album: album;
+        clicked => {
+            AppState.open-album(album.id);
+        }
+    }
+}
+
+export component AlbumsPage {
+    in property <bool> active;
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        ScrollArea {
+
+            width: parent.width;
+
+            height: parent.height;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: parent.width;
+                padding: Theme.unit * 6;
+                spacing: Theme.unit * 6;
+                PageHeader {
+                    title: "Альбомы";
+                    subtitle: "Подборки из всех библиотек. Группы объединяют похожие альбомы.";
+                    Button {
+                        icon: Icons.plus;
+                        text: "Создать альбом";
+                        clicked => {
+                            AppState.create("album");
+                        }
+                    }
+                }
+
+                if AppState.favorite-albums.length > 0: VerticalLayout {
+                    spacing: Theme.unit * 3;
+                    SectionTitle {
+                        text: "Избранные";
+                    }
+
+                    AlbumGrid {
+                        albums: AppState.favorite-albums;
+                    }
+                }
+
+                for group in AppState.album-groups: VerticalLayout {
+                    spacing: Theme.unit * 3;
+                    SectionTitle {
+                        text: group.name;
+                    }
+
+                    AlbumGrid {
+                        albums: group.albums;
+                    }
+                }
+            }
+        }
+    }
+}

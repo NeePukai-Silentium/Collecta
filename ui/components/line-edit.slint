@@ -1,0 +1,76 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icon } from "icon.slint";
+
+export component LineEdit {
+    in property <image> icon;
+    in property <string> placeholder;
+    in-out property <string> text;
+    in property <bool> multiline;
+    out property <bool> has-focus: input.has-focus;
+    callback edited(text: string);
+    callback accepted(text: string);
+
+    min-height: Theme.control-height;
+    preferred-width: Theme.sidebar-width;
+
+    forward-focus: input;
+
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: Theme.color.surface;
+        border-width: Theme.hairline;
+        border-color: input.has-focus ? Theme.color.accent : touch.has-hover ? Theme.color.surface-active : Theme.color.border;
+        animate border-color { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.text;
+        clicked => {
+            input.focus();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.unit * 3;
+        padding-right: Theme.unit * 3;
+        padding-top: root.multiline ? Theme.unit * 2 : 0;
+        padding-bottom: root.multiline ? Theme.unit * 2 : 0;
+        spacing: Theme.unit * 2;
+        if root.icon.width > 0: Icon {
+            y: (parent.height - self.height) / 2;
+            source: root.icon;
+            colorize: Theme.color.text-muted;
+        }
+        Rectangle {
+            Text {
+                width: 100%;
+                height: 100%;
+                text: root.placeholder;
+                visible: input.text == "";
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+                vertical-alignment: root.multiline ? top : center;
+                overflow: elide;
+            }
+
+            input := TextInput {
+                width: 100%;
+                height: 100%;
+                text <=> root.text;
+                color: Theme.color.text;
+                selection-background-color: Theme.color.accent.with-alpha(0.35);
+                selection-foreground-color: Theme.color.text;
+                font-size: Theme.font-size;
+                vertical-alignment: root.multiline ? top : center;
+                single-line: !root.multiline;
+                wrap: root.multiline ? word-wrap : no-wrap;
+                edited => {
+                    root.edited(self.text);
+                }
+                accepted => {
+                    root.accepted(self.text);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,77 @@
+import { Theme, Motion } from "../theme.slint";
+import { MenuRow } from "menu-item.slint";
+
+export struct MenuEntry {
+    icon: image,
+    text: string,
+    trailing: string,
+    danger: bool,
+    separator: bool,
+    submenu: bool,
+    checked: bool,
+}
+
+// Floating list for context menus, dropdowns and submenus. Fades in with a small slide.
+export component PopupMenu {
+    in property <[MenuEntry]> entries;
+    in property <bool> shown;
+    in property <bool> check-space;
+    in property <int> highlighted: -1;
+    in property <length> list-width: Theme.sidebar-width;
+    callback activated(index: int);
+    // `row-y` is the row's top edge relative to the menu, for placing a submenu next to it.
+    callback hovered(index: int, row-y: length);
+
+    width: max(root.list-width, list.preferred-width);
+    height: list.preferred-height;
+    opacity: root.shown ? 1 : 0;
+    visible: self.opacity > 0;
+    animate opacity { duration: Theme.anim; easing: Motion.easing; }
+
+    card := Rectangle {
+        y: root.shown ? 0 : -Theme.unit * 2;
+        animate y { duration: Theme.anim; easing: Motion.easing; }
+        border-radius: Theme.radius;
+        background: Theme.color.surface;
+        border-width: Theme.hairline;
+        border-color: Theme.color.border;
+        drop-shadow-blur: Theme.unit * 6;
+        drop-shadow-offset-y: Theme.unit;
+        drop-shadow-color: Theme.color.scrim.transparentize(50%);
+
+        // Swallows clicks between rows, so they don't reach what's under the menu.
+        TouchArea { }
+
+        list := VerticalLayout {
+            padding: Theme.unit;
+            for entry[index] in root.entries: Rectangle {
+                height: entry.separator ? Theme.unit * 2 + Theme.hairline : Theme.control-height;
+                if entry.separator: Rectangle {
+                    x: Theme.unit * 2;
+                    width: parent.width - Theme.unit * 4;
+                    height: Theme.hairline;
+                    background: Theme.color.border;
+                }
+                if !entry.separator: row := MenuRow {
+                    width: parent.width;
+                    icon: entry.icon;
+                    text: entry.text;
+                    trailing: entry.trailing;
+                    danger: entry.danger;
+                    submenu: entry.submenu;
+                    checked: entry.checked;
+                    check-space: root.check-space;
+                    highlighted: root.highlighted == index;
+                    clicked => {
+                        root.activated(index);
+                    }
+                    changed has-hover => {
+                        if self.has-hover {
+                            root.hovered(index, parent.y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

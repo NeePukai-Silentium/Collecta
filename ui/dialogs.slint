@@ -1,0 +1,163 @@
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { AppState } from "state.slint";
+import { Button, ButtonKind } from "components/button.slint";
+import { Dialog } from "components/dialog.slint";
+import { LineEdit } from "components/line-edit.slint";
+import { FolderList } from "pages/import.slint";
+
+// Confirmations and simple name prompts. What they do is decided on the Rust side by `AppState.dialog`.
+export component MessageDialog {
+    Dialog {
+        width: root.width;
+        height: root.height;
+        shown: AppState.dialog != "" && AppState.dialog != "add-library";
+        title: AppState.dialog-title;
+        dismissed => {
+            AppState.dialog-cancelled();
+        }
+
+        if AppState.dialog-text != "": Text {
+            text: AppState.dialog-text;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+            wrap: word-wrap;
+        }
+
+        if AppState.dialog-has-input: input := LineEdit {
+            text <=> AppState.dialog-input;
+            accepted => {
+                AppState.dialog-confirmed();
+            }
+            init => {
+                self.focus();
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.unit * 2;
+            alignment: end;
+            Button {
+                text: "Отмена";
+                clicked => {
+                    AppState.dialog-cancelled();
+                }
+            }
+
+            Button {
+                kind: AppState.dialog-danger ? ButtonKind.danger : ButtonKind.primary;
+                text: AppState.dialog-confirm;
+                clicked => {
+                    AppState.dialog-confirmed();
+                }
+            }
+        }
+    }
+}
+
+export component AddLibraryDialog {
+    Dialog {
+        width: root.width;
+        height: root.height;
+        shown: AppState.dialog == "add-library";
+        title: "Новая библиотека";
+        card-width: Theme.sidebar-width * 2.5;
+        dismissed => {
+            AppState.dialog-cancelled();
+        }
+
+        VerticalLayout {
+            spacing: Theme.unit * 2;
+            Text {
+                text: "Название";
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+            }
+
+            LineEdit {
+                placeholder: "Например, Wallpapers";
+                text <=> AppState.new-library-name;
+            }
+        }
+
+        VerticalLayout {
+            spacing: Theme.unit;
+            Text {
+                text: "Источники — папки, из которых собираются изображения";
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+            }
+
+            FolderList {
+                folders: AppState.new-library-sources;
+                icon: Icons.folder;
+                empty-text: "Пока нет папок";
+                remove(index) => {
+                    AppState.new-library-folder-remove(false, index);
+                }
+            }
+
+            HorizontalLayout {
+                alignment: start;
+                Button {
+                    kind: ButtonKind.ghost;
+                    icon: Icons.plus;
+                    text: "Добавить папку";
+                    clicked => {
+                        AppState.new-library-folder-add(false);
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            spacing: Theme.unit;
+            Text {
+                text: "Исключённые папки — их сканирование пропустит";
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+            }
+
+            FolderList {
+                folders: AppState.new-library-excluded;
+                icon: Icons.folder-x;
+                empty-text: "Нет исключений";
+                remove(index) => {
+                    AppState.new-library-folder-remove(true, index);
+                }
+            }
+
+            HorizontalLayout {
+                alignment: start;
+                Button {
+                    kind: ButtonKind.ghost;
+                    icon: Icons.plus;
+                    text: "Исключить папку";
+                    clicked => {
+                        AppState.new-library-folder-add(true);
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.unit * 2;
+            alignment: end;
+            Button {
+                text: "Отмена";
+                clicked => {
+                    AppState.dialog-cancelled();
+                }
+            }
+
+            Button {
+                kind: ButtonKind.primary;
+                text: "Создать";
+                enabled: AppState.new-library-name != "";
+                clicked => {
+                    AppState.dialog-confirmed();
+                }
+            }
+        }
+    }
+}

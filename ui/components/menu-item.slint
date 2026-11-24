@@ -1,0 +1,75 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// One row of the side menu, a context menu or a dropdown list.
+export component MenuRow {
+    in property <image> icon;
+    in property <string> text;
+    in property <string> trailing;
+    in property <bool> checked;
+    // Lists with check marks keep the space for the mark, so the text doesn't jump.
+    in property <bool> check-space;
+    in property <bool> submenu;
+    in property <bool> danger;
+    // Side menu: the current page. Its background is the sliding pill drawn by the side menu.
+    in property <bool> selected;
+    // Keeps the hover look, e.g. while its submenu is open.
+    in property <bool> highlighted;
+    out property <bool> has-hover: touch.has-hover;
+    callback clicked;
+
+    height: Theme.control-height;
+
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: (touch.has-hover || root.highlighted) && !root.selected ? Theme.color.surface-hover : transparent;
+        animate background { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.unit * 3;
+        padding-right: Theme.unit * 2;
+        spacing: Theme.unit * 3;
+        if root.icon.width > 0: Icon {
+            y: (parent.height - self.height) / 2;
+            source: root.icon;
+            colorize: root.danger ? Theme.color.danger : root.selected ? Theme.color.accent : touch.has-hover ? Theme.color.text : Theme.color.text-muted;
+            animate colorize { duration: Theme.anim; easing: Motion.easing; }
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.text;
+            color: root.danger ? Theme.color.danger : Theme.color.text;
+            font-size: Theme.font-size;
+            font-weight: root.selected ? 600 : 400;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        if root.trailing != "": Text {
+            text: root.trailing;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+        if root.check-space || root.checked: Icon {
+            y: (parent.height - self.height) / 2;
+            source: Icons.check;
+            colorize: Theme.color.accent;
+            opacity: root.checked ? 1 : 0;
+        }
+        if root.submenu: Icon {
+            y: (parent.height - self.height) / 2;
+            source: Icons.chevron-right;
+            colorize: Theme.color.text-muted;
+        }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}

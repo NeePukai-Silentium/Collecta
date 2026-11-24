@@ -1,0 +1,20 @@
+[package]
+name = "collecta"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fast_image_resize = "6.2.0"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "bmp", "webp", "tiff"] }
+slint = { version = "1.19.0", default-features = false, features = ["std", "compat-1-2", "backend-winit", "unstable-winit-030", "renderer-software", "software-renderer-path"] }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Threading"] }
+
+[build-dependencies]
+slint-build = "1.19.0"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

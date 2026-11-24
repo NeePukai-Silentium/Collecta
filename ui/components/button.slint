@@ -1,0 +1,55 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icon } from "icon.slint";
+
+export enum ButtonKind { normal, primary, danger, ghost }
+
+export component Button {
+    in property <string> text;
+    in property <image> icon;
+    in property <ButtonKind> kind: normal;
+    in property <bool> enabled: true;
+    callback clicked;
+
+    property <bool> filled: kind == ButtonKind.primary || kind == ButtonKind.danger;
+    property <color> fill: kind == ButtonKind.primary ? Theme.color.accent
+        : kind == ButtonKind.danger ? Theme.color.danger
+        : kind == ButtonKind.ghost ? transparent
+        : Theme.color.surface;
+    property <color> hover-fill: filled ? fill.mix(Theme.color.text, 85%) : Theme.color.surface-hover;
+    property <color> ink: filled ? Theme.color.bg : Theme.color.text;
+
+    height: Theme.control-height;
+    opacity: enabled ? 1 : 0.5;
+
+    Rectangle {
+        border-radius: Theme.radius-small;
+        border-width: root.kind == ButtonKind.normal ? Theme.hairline : 0;
+        border-color: Theme.color.border;
+        background: touch.pressed && !root.filled ? Theme.color.surface-active : touch.has-hover ? root.hover-fill : root.fill;
+        animate background { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.unit * 3;
+        padding-right: Theme.unit * 3;
+        spacing: Theme.unit * 2;
+        alignment: center;
+        if root.icon.width > 0: Icon {
+            y: (parent.height - self.height) / 2;
+            source: root.icon;
+            colorize: root.ink;
+        }
+        Text {
+            text: root.text;
+            color: root.ink;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}

@@ -1,0 +1,53 @@
+import { Theme, Motion } from "../theme.slint";
+
+// Dimmed backdrop with a card in the middle. Content and buttons go inside as children.
+export component Dialog {
+    in property <bool> shown;
+    in property <string> title;
+    in property <length> card-width: Theme.sidebar-width * 2;
+    callback dismissed;
+
+    opacity: root.shown ? 1 : 0;
+    visible: self.opacity > 0;
+    animate opacity { duration: Theme.anim; easing: Motion.easing; }
+
+    Rectangle {
+        background: Theme.color.scrim;
+    }
+
+    TouchArea {
+        clicked => {
+            root.dismissed();
+        }
+    }
+
+    card := Rectangle {
+        width: min(root.card-width, root.width - Theme.unit * 8);
+        height: content.preferred-height;
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2 + (root.shown ? 0 : Theme.unit * 4);
+        animate y { duration: Theme.anim; easing: Motion.easing; }
+        border-radius: Theme.radius;
+        background: Theme.color.surface;
+        border-width: Theme.hairline;
+        border-color: Theme.color.border;
+        drop-shadow-blur: Theme.unit * 8;
+        drop-shadow-offset-y: Theme.unit * 2;
+        drop-shadow-color: Theme.color.scrim.transparentize(50%);
+
+        TouchArea { }
+
+        content := VerticalLayout {
+            padding: Theme.unit * 6;
+            spacing: Theme.unit * 4;
+            Text {
+                text: root.title;
+                color: Theme.color.text;
+                font-size: Theme.font-size;
+                font-weight: 600;
+            }
+
+            @children
+        }
+    }
+}

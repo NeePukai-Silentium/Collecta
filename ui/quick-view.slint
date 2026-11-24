@@ -1,0 +1,305 @@
+import { Theme, Motion } from "theme.slint";
+import { Icons } from "icons.slint";
+import { AppState } from "state.slint";
+import { Icon } from "components/icon.slint";
+import { IconButton } from "components/icon-button.slint";
+import { Button, ButtonKind } from "components/button.slint";
+import { LineEdit } from "components/line-edit.slint";
+import { TagChip } from "components/tag-chip.slint";
+import { ScrollArea } from "components/scroll-area.slint";
+import { Grid } from "components/page.slint";
+
+component Field {
+    in property <string> label;
+    in property <string> value;
+
+    VerticalLayout {
+        spacing: Theme.unit;
+        Text {
+            text: root.label;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+        }
+
+        Text {
+            text: root.value;
+            color: Theme.color.text;
+            font-size: Theme.font-size;
+            wrap: word-wrap;
+        }
+    }
+}
+
+// Round button on top of the dimmed backdrop.
+component FloatingButton inherits Rectangle {
+    in property <image> icon;
+    callback clicked;
+
+    width: Theme.control-height + Theme.unit * 2;
+    height: self.width;
+    border-radius: self.width / 2;
+    background: Theme.color.surface;
+    IconButton {
+        size: parent.width;
+        icon: root.icon;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+// The picture grows out of its tile and fills the free space; details slide in on the right.
+// `t` goes 0 → 1 on opening and back on closing, every position is in between.
+export component QuickView {
+    // Where this element is in the window: the tile position comes in window coordinates.
+    in property <length> origin-x;
+    in property <length> origin-y;
+
+    property <float> t: AppState.quick-open ? 1 : 0;
+    animate t { duration: Theme.anim-long; easing: Motion.easing; }
+
+    property <length> panel-width: Theme.sidebar-width;
+    property <length> pad: Theme.unit * 6;
+    property <length> area-width: root.width - root.panel-width;
+    property <float> ratio: max(AppState.quick-ratio, 0.01);
+    property <length> fit-width: max(0px, min(root.area-width - root.pad * 2, (root.height - root.pad * 2) * root.ratio));
+    property <length> fit-height: root.fit-width / root.ratio;
+    property <length> to-x: (root.area-width - root.fit-width) / 2;
+    property <length> to-y: (root.height - root.fit-height) / 2;
+    property <bool> has-tile: AppState.quick-from-width > 0;
+    property <length> from-x: root.has-tile ? AppState.quick-from-x - root.origin-x : root.to-x + root.fit-width * 0.05;
+    property <length> from-y: root.has-tile ? AppState.quick-from-y - root.origin-y : root.to-y + root.fit-height * 0.05;
+    property <length> from-width: root.has-tile ? AppState.quick-from-width : root.fit-width * 0.9;
+    property <length> from-height: root.has-tile ? AppState.quick-from-height : root.fit-height * 0.9;
+
+    visible: root.t > 0;
+
+    Rectangle {
+        background: Theme.color.scrim;
+        opacity: root.t;
+    }
+
+    TouchArea {
+        clicked => {
+            AppState.quick-close();
+        }
+    }
+
+    Rectangle {
+        x: root.from-x + (root.to-x - root.from-x) * root.t;
+        y: root.from-y + (root.to-y - root.from-y) * root.t;
+        width: root.from-width + (root.fit-width - root.from-width) * root.t;
+        height: root.from-height + (root.fit-height - root.from-height) * root.t;
+        opacity: root.has-tile ? 1 : root.t;
+        border-radius: Theme.radius-small;
+        clip: true;
+        background: Theme.color.surface-active;
+        if AppState.quick-has-image: Image {
+            width: parent.width;
+            height: parent.height;
+            source: AppState.quick-image;
+            image-fit: cover;
+        }
+        // Clicks on the picture don't close the view.
+        TouchArea { }
+    }
+
+    Rectangle {
+        x: root.pad / 2;
+        y: root.pad / 2;
+        width: counter.preferred-width + Theme.unit * 6;
+        height: Theme.control-height + Theme.unit * 2;
+        opacity: root.t;
+        border-radius: self.height / 2;
+        background: Theme.color.surface;
+        counter := Text {
+            text: AppState.quick-counter;
+            color: Theme.color.text;
+            font-size: Theme.font-size;
+        }
+    }
+
+    FloatingButton {
+        x: root.pad / 2;
+        y: (root.height - self.height) / 2;
+        opacity: root.t;
+        icon: Icons.chevron-left;
+        clicked => {
+            AppState.quick-step(-1);
+        }
+    }
+
+    FloatingButton {
+        x: root.area-width - self.width - root.pad / 2;
+        y: (root.height - self.height) / 2;
+        opacity: root.t;
+        icon: Icons.chevron-right;
+        clicked => {
+            AppState.quick-step(1);
+        }
+    }
+
+    FloatingButton {
+        x: root.area-width - self.width - root.pad / 2;
+        y: root.pad / 2;
+        opacity: root.t;
+        icon: Icons.x;
+        clicked => {
+            AppState.quick-close();
+        }
+    }
+
+    panel := Rectangle {
+        x: root.width - root.panel-width * root.t;
+        width: root.panel-width;
+        background: Theme.color.surface;
+        border-width: Theme.hairline;
+        border-color: Theme.color.border;
+        TouchArea { }
+
+        ScrollArea {
+
+            width: parent.width;
+
+            height: parent.height;
+            content-height: details.preferred-height;
+            details := VerticalLayout {
+                width: parent.width;
+                padding: Theme.unit * 5;
+                spacing: Theme.unit * 4;
+                Text {
+                    text: AppState.quick-info.name;
+                    color: Theme.color.text;
+                    font-size: Theme.font-size;
+                    font-weight: 600;
+                    wrap: word-wrap;
+                }
+
+                Text {
+                    text: AppState.quick-info.resolution + " · " + AppState.quick-info.size + " · " + AppState.quick-info.format;
+                    color: Theme.color.text-muted;
+                    font-size: Theme.font-size;
+                    wrap: word-wrap;
+                }
+
+                Field {
+                    label: "Дата";
+                    value: AppState.quick-info.date;
+                }
+
+                Field {
+                    label: "Путь";
+                    value: AppState.quick-info.path;
+                }
+
+                Field {
+                    label: "Библиотека";
+                    value: AppState.quick-info.library;
+                }
+
+                Field {
+                    label: "Категория";
+                    value: AppState.quick-info.category;
+                }
+
+                VerticalLayout {
+                    spacing: Theme.unit * 2;
+                    Text {
+                        text: "Теги";
+                        color: Theme.color.text-muted;
+                        font-size: Theme.font-size;
+                    }
+
+                    tag-grid := Rectangle {
+                        property <length> gap: Theme.unit * 2;
+                        property <length> cell: (self.width - self.gap) / 2;
+                        property <length> row-height: Theme.control-height - Theme.unit * 2;
+                        height: Grid.rows(AppState.quick-info.tags.length, 2) * (self.row-height + self.gap) - self.gap;
+                        for tag[index] in AppState.quick-info.tags: TagChip {
+                            x: mod(index, 2) * (tag-grid.cell + tag-grid.gap);
+                            y: floor(index / 2) * (tag-grid.row-height + tag-grid.gap);
+                            width: tag-grid.cell;
+                            text: tag;
+                            clicked => {
+                                AppState.quick-close();
+                                AppState.tag-clicked(tag);
+                            }
+                        }
+                    }
+
+                    if AppState.quick-info.tags.length == 0: Text {
+                        text: "Нет тегов";
+                        color: Theme.color.text-muted;
+                        font-size: Theme.font-size;
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: Theme.unit;
+                    Text {
+                        text: "Альбомы";
+                        color: Theme.color.text-muted;
+                        font-size: Theme.font-size;
+                    }
+
+                    for album in AppState.quick-info.albums: HorizontalLayout {
+                        spacing: Theme.unit * 2;
+                        Icon {
+                            y: (parent.height - self.height) / 2;
+                            source: Icons.album;
+                            colorize: Theme.color.text-muted;
+                        }
+
+                        Text {
+                            text: album;
+                            color: Theme.color.text;
+                            font-size: Theme.font-size;
+                            overflow: elide;
+                        }
+                    }
+                    if AppState.quick-info.albums.length == 0: Text {
+                        text: "Не в альбомах";
+                        color: Theme.color.text-muted;
+                        font-size: Theme.font-size;
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: Theme.unit * 2;
+                    Text {
+                        text: "Описание";
+                        color: Theme.color.text-muted;
+                        font-size: Theme.font-size;
+                    }
+
+                    LineEdit {
+                        height: Theme.control-height * 3;
+                        multiline: true;
+                        placeholder: "Добавьте описание";
+                        text <=> AppState.quick-description;
+                        edited(text) => {
+                            AppState.quick-description-edited(text);
+                        }
+                    }
+                }
+
+                Button {
+                    icon: Icons.heart;
+                    text: AppState.quick-info.favorite ? "Убрать из избранного" : "В избранное";
+                    clicked => {
+                        AppState.quick-favorite();
+                    }
+                }
+
+                Button {
+                    kind: ButtonKind.primary;
+                    icon: Icons.external-link;
+                    text: "Открыть в Pictora";
+                    clicked => {
+                        AppState.quick-pictora();
+                    }
+                }
+            }
+        }
+    }
+}

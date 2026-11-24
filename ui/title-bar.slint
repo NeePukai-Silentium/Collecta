@@ -1,0 +1,81 @@
+import { Theme } from "theme.slint";
+import { Icons } from "icons.slint";
+import { AppState } from "state.slint";
+import { IconButton } from "components/icon-button.slint";
+import { LineEdit } from "components/line-edit.slint";
+
+// Our own title bar: drag the empty part to move the window (the system move, so snapping to screen edges works),
+// double click to maximize, window buttons on the right.
+export component TitleBar {
+    in property <bool> maximized;
+    callback minimize;
+    callback toggle-maximize;
+    callback close;
+
+    height: Theme.header-height;
+
+    // Under the controls: only presses on empty space reach it.
+    WindowMoveArea {
+        TouchArea {
+            double-clicked => {
+                root.toggle-maximize();
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: Theme.unit * 6;
+        padding-right: Theme.unit * 2;
+        spacing: Theme.unit * 2;
+        // The search field starts where the page content starts.
+        Text {
+            width: Theme.sidebar-width - Theme.unit * 2;
+            text: "Collecta";
+            color: Theme.color.text;
+            font-size: Theme.font-size;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+
+        LineEdit {
+            y: (parent.height - self.height) / 2;
+            height: Theme.control-height;
+            width: Theme.sidebar-width * 2;
+            icon: Icons.search;
+            placeholder: "Поиск по имени, тегам и пути";
+            text <=> AppState.search;
+            edited(text) => {
+                AppState.search-edited(text);
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+
+        IconButton {
+            y: (parent.height - self.height) / 2;
+            icon: Icons.minus;
+            clicked => {
+                root.minimize();
+            }
+        }
+
+        IconButton {
+            y: (parent.height - self.height) / 2;
+            icon: root.maximized ? Icons.copy : Icons.square;
+            clicked => {
+                root.toggle-maximize();
+            }
+        }
+
+        IconButton {
+            y: (parent.height - self.height) / 2;
+            icon: Icons.x;
+            danger-hover: true;
+            clicked => {
+                root.close();
+            }
+        }
+    }
+}

@@ -1,0 +1,60 @@
+import { Theme, Motion } from "../theme.slint";
+
+export component Slider {
+    in property <float> minimum: 0;
+    in property <float> maximum: 1;
+    in-out property <float> value;
+    callback changed(value: float);
+
+    property <length> knob: Theme.control-height / 2;
+    property <float> fraction: (root.value - root.minimum) / (root.maximum - root.minimum);
+
+    height: Theme.control-height;
+    preferred-width: Theme.sidebar-width / 2;
+
+    Rectangle {
+        y: (parent.height - self.height) / 2;
+        height: Theme.unit;
+        border-radius: self.height / 2;
+        background: Theme.color.surface-active;
+    }
+
+    Rectangle {
+        x: 0;
+        y: (parent.height - self.height) / 2;
+        width: root.knob / 2 + (root.width - root.knob) * root.fraction;
+        height: Theme.unit;
+        border-radius: self.height / 2;
+        background: Theme.color.accent;
+    }
+
+    Rectangle {
+        x: (root.width - root.knob) * root.fraction;
+        y: (parent.height - self.height) / 2;
+        width: root.knob;
+        height: root.knob;
+        border-radius: self.width / 2;
+        background: Theme.color.surface;
+        border-width: Theme.hairline * 2;
+        border-color: touch.has-hover || touch.pressed ? Theme.color.accent : Theme.color.text-muted;
+        animate border-color { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        function set-from(x: length) {
+            root.value = root.minimum + (root.maximum - root.minimum) * clamp((x - root.knob / 2) / (root.width - root.knob), 0, 1);
+            root.changed(root.value);
+        }
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                self.set-from(self.mouse-x);
+            }
+        }
+        moved => {
+            if self.pressed {
+                self.set-from(self.mouse-x);
+            }
+        }
+    }
+}

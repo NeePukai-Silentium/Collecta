@@ -1,0 +1,107 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { IconButton } from "icon-button.slint";
+
+// A page fades in and slides up a little when it becomes the current one.
+export component PageFrame {
+    in property <bool> active;
+
+    opacity: root.active ? 1 : 0;
+    visible: self.opacity > 0;
+    animate opacity { duration: Theme.anim; easing: Motion.easing; }
+
+    Rectangle {
+        y: root.active ? 0 : Theme.unit * 3;
+        width: root.width;
+        height: root.height;
+        animate y { duration: Theme.anim; easing: Motion.easing; }
+        @children
+    }
+}
+
+// Page title with an optional back arrow and subtitle; children go to the right side (actions).
+export component PageHeader {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <bool> back;
+    callback back-clicked;
+
+    HorizontalLayout {
+        spacing: Theme.unit * 3;
+        if root.back: IconButton {
+            y: (parent.height - self.height) / 2;
+            icon: Icons.arrow-left;
+            clicked => {
+                root.back-clicked();
+            }
+        }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            alignment: center;
+            spacing: Theme.unit;
+            Text {
+                text: root.title;
+                color: Theme.color.text;
+                font-size: Theme.title-font-size;
+                font-weight: 600;
+                overflow: elide;
+            }
+
+            if root.subtitle != "": Text {
+                text: root.subtitle;
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+                wrap: word-wrap;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.unit * 2;
+            alignment: end;
+            @children
+        }
+    }
+}
+
+export component SectionTitle inherits Text {
+    color: Theme.color.text;
+    font-size: Theme.font-size;
+    font-weight: 600;
+}
+
+// Rounded panel for groups of settings and lists.
+export component Card inherits Rectangle {
+    border-radius: Theme.radius;
+    background: Theme.color.surface;
+    border-width: Theme.hairline;
+    border-color: Theme.color.border;
+}
+
+// Picture that fills its rounded box, cropped; plain grey when there's no picture.
+export component Cover inherits Rectangle {
+    in property <image> source;
+    in property <bool> has-image;
+
+    border-radius: Theme.radius-small;
+    clip: true;
+    background: Theme.color.surface-active;
+    if root.has-image: Image {
+        width: parent.width;
+        height: parent.height;
+        source: root.source;
+        image-fit: cover;
+    }
+}
+
+// Column math for grids of equal cards.
+export global Grid {
+    public pure function columns(width: length, min-width: length, gap: length) -> int {
+        return max(1, floor((width + gap) / (min-width + gap)));
+    }
+    public pure function cell(width: length, columns: int, gap: length) -> length {
+        return (width - gap * (columns - 1)) / columns;
+    }
+    public pure function rows(count: int, columns: int) -> int {
+        return ceil(count / columns);
+    }
+}

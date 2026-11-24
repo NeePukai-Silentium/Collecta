@@ -1,0 +1,188 @@
+import { Theme, Motion } from "theme.slint";
+import { Icons } from "icons.slint";
+import { AppState, Page } from "state.slint";
+import { MenuRow } from "components/menu-item.slint";
+import { IconButton } from "components/icon-button.slint";
+
+// Side menu as in Collecta.md. The highlight under the current item slides between items.
+export component Sidebar {
+    property <bool> on-library: AppState.library >= 0 && AppState.page == Page.all;
+    property <length> pill-y: root.on-library ? libraries.y + AppState.library * Theme.control-height
+        : AppState.page == Page.home ? home.y
+        : AppState.page == Page.all ? all.y
+        : AppState.page == Page.albums || AppState.page == Page.album ? albums.y
+        : AppState.page == Page.tags ? tags.y
+        : AppState.page == Page.categories ? categories.y
+        : AppState.page == Page.favorites ? favorites.y
+        : AppState.page == Page.duplicates ? duplicates.y
+        : AppState.page == Page.import ? import.y
+        : -Theme.control-height;
+
+    width: Theme.sidebar-width;
+
+    Rectangle {
+        x: Theme.unit * 3;
+        y: menu.y + root.pill-y;
+        width: parent.width - Theme.unit * 6;
+        height: Theme.control-height;
+        opacity: AppState.page == Page.settings ? 0 : 1;
+        border-radius: Theme.radius-small;
+        background: Theme.color.surface-active;
+        animate y, opacity { duration: Theme.anim; easing: Motion.easing; }
+
+        Rectangle {
+            x: 0;
+            y: (parent.height - self.height) / 2;
+            width: Theme.unit * 0.75;
+            height: parent.height / 2;
+            border-radius: self.width / 2;
+            background: Theme.color.accent;
+        }
+    }
+
+    VerticalLayout {
+        padding-left: Theme.unit * 3;
+        padding-right: Theme.unit * 3;
+        padding-top: Theme.unit * 2;
+        padding-bottom: Theme.unit * 3;
+
+        menu := VerticalLayout {
+            home := MenuRow {
+                icon: Icons.house;
+                text: "Главная";
+                selected: AppState.page == Page.home;
+                clicked => {
+                    AppState.navigate(Page.home);
+                }
+            }
+
+            all := MenuRow {
+                icon: Icons.images;
+                text: "Все изображения";
+                selected: AppState.page == Page.all && !root.on-library;
+                clicked => {
+                    AppState.navigate(Page.all);
+                }
+            }
+
+            albums := MenuRow {
+                icon: Icons.album;
+                text: "Альбомы";
+                selected: AppState.page == Page.albums || AppState.page == Page.album;
+                clicked => {
+                    AppState.navigate(Page.albums);
+                }
+            }
+
+            tags := MenuRow {
+                icon: Icons.tags;
+                text: "Теги";
+                selected: AppState.page == Page.tags;
+                clicked => {
+                    AppState.navigate(Page.tags);
+                }
+            }
+
+            categories := MenuRow {
+                icon: Icons.shapes;
+                text: "Категории";
+                selected: AppState.page == Page.categories;
+                clicked => {
+                    AppState.navigate(Page.categories);
+                }
+            }
+
+            favorites := MenuRow {
+                icon: Icons.heart;
+                text: "Избранное";
+                selected: AppState.page == Page.favorites;
+                clicked => {
+                    AppState.navigate(Page.favorites);
+                }
+            }
+
+            HorizontalLayout {
+                padding-left: Theme.unit * 3;
+                height: Theme.control-height + Theme.unit * 4;
+                Text {
+                    text: "Мои библиотеки";
+                    color: Theme.color.text-muted;
+                    font-size: Theme.font-size;
+                    vertical-alignment: bottom;
+                }
+            }
+
+            Rectangle {
+                height: Theme.unit * 2;
+            }
+
+            libraries := VerticalLayout {
+                for library[index] in AppState.libraries: MenuRow {
+                    icon: Icons.library;
+                    text: library.name;
+                    trailing: library.total;
+                    selected: AppState.library == index;
+                    clicked => {
+                        AppState.select-library(index);
+                    }
+                }
+            }
+
+            MenuRow {
+                icon: Icons.plus;
+                text: "Добавить библиотеку";
+                clicked => {
+                    AppState.add-library();
+                }
+            }
+
+            Rectangle {
+                height: Theme.unit * 4;
+            }
+
+            duplicates := MenuRow {
+                icon: Icons.copy;
+                text: "Дубликаты";
+                selected: AppState.page == Page.duplicates;
+                clicked => {
+                    AppState.navigate(Page.duplicates);
+                }
+            }
+
+            import := MenuRow {
+                icon: Icons.folder-search;
+                text: "Импорт и сканирование";
+                selected: AppState.page == Page.import;
+                clicked => {
+                    AppState.navigate(Page.import);
+                }
+            }
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+        }
+
+        HorizontalLayout {
+            spacing: Theme.unit * 2;
+            IconButton {
+                icon: Icons.settings;
+                active: AppState.page == Page.settings;
+                clicked => {
+                    AppState.navigate(Page.settings);
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            IconButton {
+                icon: Theme.dark ? Icons.sun : Icons.moon;
+                clicked => {
+                    Theme.dark = !Theme.dark;
+                }
+            }
+        }
+    }
+}

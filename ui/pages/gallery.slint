@@ -1,0 +1,225 @@
+import { Theme } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AppState, Gallery, GalleryKind } from "../state.slint";
+import { Icon } from "../components/icon.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { Dropdown } from "../components/dropdown.slint";
+import { Segmented } from "../components/segmented.slint";
+import { Slider } from "../components/slider.slint";
+import { TagChip } from "../components/tag-chip.slint";
+import { Thumbnail } from "../components/thumbnail.slint";
+import { ScrollArea } from "../components/scroll-area.slint";
+import { PageFrame, PageHeader } from "../components/page.slint";
+
+// "All images", "Favorites" and an open album: the toolbar and the picture feed.
+// Tile positions come from the Rust side (grid or masonry), the page only reports its width.
+export component GalleryPage {
+    in property <bool> active;
+    in property <GalleryKind> kind;
+    in property <Gallery> gallery;
+    in property <string> title;
+    in property <string> subtitle;
+    in property <bool> back;
+    callback back-clicked;
+
+    property <length> gap: Theme.unit * 2;
+    property <length> caption: AppState.detailed ? Theme.unit * 2 + Theme.font-size * 3 : 0;
+    property <length> thumb: Theme.thumb-size * AppState.thumb-scale;
+    property <bool> masonry: AppState.masonry;
+    property <length> feed-width: feed.width;
+    property <[string]> sort-names: ["Имя", "Дата", "Размер", "Формат"];
+
+    function relayout() {
+        if root.feed-width > 0 {
+            AppState.relayout(root.kind, root.feed-width - Theme.unit * 3, root.thumb, root.caption, root.gap, root.masonry);
+        }
+    }
+    changed feed-width => {
+        root.relayout();
+    }
+    changed thumb => {
+        root.relayout();
+    }
+    changed caption => {
+        root.relayout();
+    }
+    changed gap => {
+        root.relayout();
+    }
+    changed masonry => {
+        root.relayout();
+    }
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        keys := FocusScope {
+            width: parent.width;
+            height: parent.height;
+            key-pressed(event) => {
+                if event.text == Key.Space && !AppState.quick-open {
+                    AppState.quick-open-selected(root.kind);
+                    return accept;
+                }
+                reject
+            }
+
+            VerticalLayout {
+                padding-left: Theme.unit * 6;
+                padding-right: Theme.unit * 3;
+                padding-top: Theme.unit * 6;
+                spacing: Theme.unit * 4;
+
+                HorizontalLayout {
+                    padding-right: Theme.unit * 3;
+                    PageHeader {
+                        title: root.title;
+                        subtitle: root.subtitle;
+                        back: root.back;
+                        back-clicked => {
+                            root.back-clicked();
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    padding-right: Theme.unit * 3;
+                    spacing: Theme.unit * 2;
+                    Dropdown {
+                        icon: Icons.arrow-down-wide-narrow;
+                        label: "Сортировка:";
+                        value: root.sort-names[AppState.sort];
+                        open: AppState.menu-open && AppState.menu-kind == "sort";
+                        clicked(x, y, w) => {
+                            AppState.show-menu("sort", x, y, w);
+                        }
+                    }
+
+                    Dropdown {
+                        icon: Icons.shapes;
+                        label: "Категория:";
+                        value: AppState.category-filter;
+                        open: AppState.menu-open && AppState.menu-kind == "category-filter";
+                        clicked(x, y, w) => {
+                            AppState.show-menu("category-filter", x, y, w);
+                        }
+                    }
+
+                    Dropdown {
+                        icon: Icons.tags;
+                        label: "Теги:";
+                        value: AppState.tag-filter;
+                        open: AppState.menu-open && AppState.menu-kind == "tag-filter";
+                        clicked(x, y, w) => {
+                            AppState.show-menu("tag-filter", x, y, w);
+                        }
+                    }
+
+                    Segmented {
+                        segment-width: Theme.control-height * 1.5;
+                        items: [{ text: "И" }, { text: "ИЛИ" }];
+                        selected: AppState.tags-and ? 0 : 1;
+                        changed(index) => {
+                            AppState.tags-and = index == 0;
+                            AppState.view-changed();
+                        }
+                    }
+
+                    Rectangle {
+                        horizontal-stretch: 1;
+                    }
+
+                    Segmented {
+                        items: [{ icon: Icons.layout-grid }, { icon: Icons.layout-dashboard }];
+                        selected: AppState.masonry ? 1 : 0;
+                        changed(index) => {
+                            AppState.masonry = index == 1;
+                        }
+                    }
+
+                    Segmented {
+                        items: [{ icon: Icons.image }, { icon: Icons.captions }];
+                        selected: AppState.detailed ? 1 : 0;
+                        changed(index) => {
+                            AppState.detailed = index == 1;
+                            AppState.view-changed();
+                        }
+                    }
+
+                    Icon {
+                        y: (parent.height - self.height) / 2;
+                        source: Icons.image;
+                        colorize: Theme.color.text-muted;
+                    }
+
+                    Slider {
+                        width: Theme.sidebar-width / 2;
+                        minimum: 0.5;
+                        maximum: 2;
+                        value: AppState.thumb-scale;
+                        changed(value) => {
+                            AppState.thumb-scale = value;
+                        }
+                    }
+                }
+
+                if AppState.filters.length > 0: HorizontalLayout {
+                    padding-right: Theme.unit * 3;
+                    spacing: Theme.unit * 2;
+                    alignment: start;
+                    for filter[index] in AppState.filters: TagChip {
+                        text: filter;
+                        selected: true;
+                        removable: true;
+                        removed => {
+                            AppState.remove-filter(index);
+                        }
+                    }
+                    Button {
+                        height: Theme.control-height - Theme.unit * 2;
+                        kind: ButtonKind.ghost;
+                        text: "Сбросить";
+                        clicked => {
+                            AppState.clear-filters();
+                        }
+                    }
+                }
+
+                Text {
+                    text: root.gallery.status;
+                    color: Theme.color.text-muted;
+                    font-size: Theme.font-size;
+                }
+
+                feed := ScrollArea {
+                    vertical-stretch: 1;
+                    content-height: root.gallery.height + Theme.unit * 6;
+                    for tile in root.gallery.tiles: Thumbnail {
+                        x: tile.x;
+                        y: tile.y;
+                        width: tile.width;
+                        height: tile.height;
+                        image: tile.image;
+                        has-image: tile.has-image;
+                        selected: tile.selected;
+                        favorite: tile.favorite;
+                        detailed: AppState.detailed;
+                        name: tile.name;
+                        info: tile.info;
+                        caption-height: root.caption;
+                        clicked(control, shift) => {
+                            keys.focus();
+                            AppState.tile-clicked(root.kind, tile.id, control, shift, self.absolute-position.x, self.absolute-position.y, self.width, self.picture-height);
+                        }
+                        context(x, y) => {
+                            keys.focus();
+                            AppState.tile-context(root.kind, tile.id, x, y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

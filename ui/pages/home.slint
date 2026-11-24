@@ -1,0 +1,239 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AppState, LibraryCard, GalleryKind, Page } from "../state.slint";
+import { Icon } from "../components/icon.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { ScrollArea } from "../components/scroll-area.slint";
+import { PageFrame, PageHeader, SectionTitle, Card, Cover, Grid } from "../components/page.slint";
+import { AlbumGrid } from "albums.slint";
+
+component LibraryCardView inherits Card {
+    in property <LibraryCard> library;
+    callback clicked;
+
+    background: touch.has-hover ? Theme.color.surface-hover : Theme.color.surface;
+    animate background { duration: Theme.anim; easing: Motion.easing; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    VerticalLayout {
+        padding: Theme.unit * 2;
+        spacing: Theme.unit * 3;
+        Cover {
+            height: root.width / 2;
+            source: root.library.cover;
+            has-image: root.library.has-cover;
+        }
+
+        VerticalLayout {
+            padding-left: Theme.unit * 2;
+            padding-right: Theme.unit * 2;
+            padding-bottom: Theme.unit * 2;
+            spacing: Theme.unit;
+            HorizontalLayout {
+                spacing: Theme.unit * 2;
+                Icon {
+                    y: (parent.height - self.height) / 2;
+                    source: Icons.library;
+                    colorize: Theme.color.accent;
+                }
+                Text {
+                    text: root.library.name;
+                    color: Theme.color.text;
+                    font-size: Theme.font-size;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+            }
+
+            Text {
+                text: root.library.count + " · " + root.library.size;
+                color: Theme.color.text;
+                font-size: Theme.font-size;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.library.sources + " · " + root.library.scanned;
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+                overflow: elide;
+            }
+        }
+    }
+}
+
+component AddLibraryCard inherits Rectangle {
+    border-radius: Theme.radius;
+    border-width: Theme.hairline;
+    border-color: touch.has-hover ? Theme.color.accent : Theme.color.border;
+    background: touch.has-hover ? Theme.color.surface-hover : transparent;
+    animate background, border-color { duration: Theme.anim; easing: Motion.easing; }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            AppState.add-library();
+        }
+    }
+
+    VerticalLayout {
+        alignment: center;
+        spacing: Theme.unit * 2;
+        Icon {
+            x: (parent.width - self.width) / 2;
+            width: Theme.icon-size * 1.5;
+            height: self.width;
+            source: Icons.plus;
+            colorize: touch.has-hover ? Theme.color.accent : Theme.color.text-muted;
+        }
+
+        Text {
+            text: "Добавить библиотеку";
+            horizontal-alignment: center;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+        }
+    }
+}
+
+export component HomePage {
+    in property <bool> active;
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        ScrollArea {
+
+            width: parent.width;
+
+            height: parent.height;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: parent.width;
+                padding: Theme.unit * 6;
+                spacing: Theme.unit * 6;
+                PageHeader {
+                    title: "Главная";
+                    subtitle: "Обзор всех библиотек";
+                }
+
+                VerticalLayout {
+                    spacing: Theme.unit * 3;
+                    SectionTitle {
+                        text: "Мои библиотеки";
+                    }
+
+                    libraries := Rectangle {
+                        property <length> gap: Theme.unit * 4;
+                        property <int> count: AppState.libraries.length + 1;
+                        property <int> columns: Grid.columns(self.width, Theme.sidebar-width, self.gap);
+                        property <length> card-width: Grid.cell(self.width, self.columns, self.gap);
+                        property <length> card-height: self.card-width / 2 + Theme.unit * 7 + Theme.font-size * 5;
+                        height: Grid.rows(self.count, self.columns) * (self.card-height + self.gap) - self.gap;
+
+                        for library[index] in AppState.libraries: LibraryCardView {
+                            x: mod(index, libraries.columns) * (libraries.card-width + libraries.gap);
+                            y: floor(index / libraries.columns) * (libraries.card-height + libraries.gap);
+                            width: libraries.card-width;
+                            height: libraries.card-height;
+                            library: library;
+                            clicked => {
+                                AppState.select-library(index);
+                            }
+                        }
+                        AddLibraryCard {
+                            x: mod(AppState.libraries.length, libraries.columns) * (libraries.card-width + libraries.gap);
+                            y: floor(AppState.libraries.length / libraries.columns) * (libraries.card-height + libraries.gap);
+                            width: libraries.card-width;
+                            height: libraries.card-height;
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    spacing: Theme.unit * 3;
+                    HorizontalLayout {
+                        SectionTitle {
+                            vertical-alignment: center;
+                            text: "Недавно добавленные";
+                        }
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+
+                        Button {
+                            kind: ButtonKind.ghost;
+                            text: "Все изображения";
+                            clicked => {
+                                AppState.sort = 1;
+                                AppState.navigate(Page.all);
+                            }
+                        }
+                    }
+
+                    recent := Rectangle {
+                        height: Theme.thumb-size;
+                        clip: true;
+                        HorizontalLayout {
+                            spacing: Theme.unit * 2;
+                            alignment: start;
+                            for thumb in AppState.recent: Rectangle {
+                                width: recent.height * thumb.ratio;
+                                Cover {
+                                    source: thumb.image;
+                                    has-image: thumb.has-image;
+                                    Rectangle {
+                                        background: Theme.color.text.with-alpha(touch.has-hover ? 0.08 : 0);
+                                        animate background { duration: Theme.anim; easing: Motion.easing; }
+                                    }
+                                }
+
+                                touch := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        AppState.tile-clicked(GalleryKind.recent, thumb.id, false, false, self.absolute-position.x, self.absolute-position.y, self.width, self.height);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if AppState.favorite-albums.length > 0: VerticalLayout {
+                    spacing: Theme.unit * 3;
+                    HorizontalLayout {
+                        SectionTitle {
+                            vertical-alignment: center;
+                            text: "Избранные альбомы";
+                        }
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                        }
+
+                        Button {
+                            kind: ButtonKind.ghost;
+                            text: "Все альбомы";
+                            clicked => {
+                                AppState.navigate(Page.albums);
+                            }
+                        }
+                    }
+
+                    AlbumGrid {
+                        albums: AppState.favorite-albums;
+                    }
+                }
+            }
+        }
+    }
+}

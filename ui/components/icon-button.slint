@@ -1,0 +1,35 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icon } from "icon.slint";
+
+// Square button with a single icon. `active` marks a toggled state (view switches, theme).
+export component IconButton {
+    in property <image> icon;
+    in property <bool> active;
+    in property <bool> danger-hover;
+    in property <length> size: Theme.control-height;
+    out property <bool> has-hover: touch.has-hover;
+    callback clicked;
+
+    width: size;
+    height: size;
+
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: root.danger-hover && touch.has-hover ? Theme.color.danger
+            : touch.pressed || root.active ? Theme.color.surface-active
+            : touch.has-hover ? Theme.color.surface-hover : transparent;
+        animate background { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    Icon {
+        source: root.icon;
+        colorize: root.danger-hover && touch.has-hover ? Theme.color.bg
+            : root.active ? Theme.color.accent : touch.has-hover ? Theme.color.text : Theme.color.text-muted;
+        animate colorize { duration: Theme.anim; easing: Motion.easing; }
+    }
+
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}

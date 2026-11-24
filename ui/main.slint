@@ -1,0 +1,263 @@
+import { Theme, Motion, Palette } from "theme.slint";
+import { Icons } from "icons.slint";
+import { AppState, Page, GalleryKind } from "state.slint";
+import { PopupMenu } from "components/context-menu.slint";
+import { TitleBar } from "title-bar.slint";
+import { Sidebar } from "sidebar.slint";
+import { QuickView } from "quick-view.slint";
+import { MessageDialog, AddLibraryDialog } from "dialogs.slint";
+import { HomePage } from "pages/home.slint";
+import { GalleryPage } from "pages/gallery.slint";
+import { AlbumsPage } from "pages/albums.slint";
+import { TagsPage } from "pages/tags.slint";
+import { CategoriesPage } from "pages/categories.slint";
+import { DuplicatesPage } from "pages/duplicates.slint";
+import { ImportPage } from "pages/import.slint";
+import { SettingsPage } from "pages/settings.slint";
+
+export { Theme, Palette, Icons, AppState }
+
+export component MainWindow inherits Window {
+    title: "Collecta";
+    no-frame: true;
+    resize-border-width: root.maximized ? 0 : Theme.unit;
+    min-width: Theme.sidebar-width + Theme.thumb-size * 3;
+    min-height: Theme.sidebar-width * 2;
+    background: Theme.color.bg;
+    default-font-size: Theme.font-size;
+
+    keys := FocusScope {
+        width: root.width;
+        height: root.height;
+        key-pressed(event) => {
+            if event.text == Key.Escape {
+                if AppState.menu-open {
+                    AppState.menu-open = false;
+                } else if AppState.dialog != "" {
+                    AppState.dialog-cancelled();
+                } else if AppState.quick-open {
+                    AppState.quick-close();
+                }
+                return accept;
+            }
+            if AppState.quick-open && event.text == Key.LeftArrow {
+                AppState.quick-step(-1);
+                return accept;
+            }
+            if AppState.quick-open && event.text == Key.RightArrow {
+                AppState.quick-step(1);
+                return accept;
+            }
+            reject
+        }
+
+        VerticalLayout {
+            title-bar := TitleBar {
+                maximized: root.maximized;
+                minimize => {
+                    root.minimized = true;
+                }
+                toggle-maximize => {
+                    root.maximized = !root.maximized;
+                }
+                close => {
+                    root.hide();
+                }
+            }
+
+            HorizontalLayout {
+                Sidebar { }
+
+                pages := Rectangle {
+                    HomePage {
+                        width: parent.width;
+                        height: parent.height;
+                        active: AppState.page == Page.home;
+                    }
+
+                    GalleryPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.all;
+                        kind: GalleryKind.all;
+                        gallery: AppState.all-gallery;
+                        title: AppState.library >= 0 ? AppState.libraries[AppState.library].name : "Все изображения";
+                        subtitle: AppState.library >= 0 ? "Библиотека · " + AppState.libraries[AppState.library].sources : "Все библиотеки вместе";
+                    }
+
+                    AlbumsPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.albums;
+                    }
+
+                    GalleryPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.album;
+                        kind: GalleryKind.album;
+                        gallery: AppState.album-gallery;
+                        title: AppState.current-album.name;
+                        subtitle: AppState.current-album.count + " · создан " + AppState.current-album.date + (AppState.current-album.description != "" ? " · " + AppState.current-album.description : "");
+                        back: true;
+                        back-clicked => {
+                            AppState.navigate(Page.albums);
+                        }
+                    }
+
+                    TagsPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.tags;
+                    }
+
+                    CategoriesPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.categories;
+                    }
+
+                    GalleryPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.favorites;
+                        kind: GalleryKind.favorites;
+                        gallery: AppState.favorites-gallery;
+                        title: "Избранное";
+                        subtitle: "Отмеченные сердечком изображения из всех библиотек";
+                    }
+
+                    DuplicatesPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.duplicates;
+                    }
+
+                    ImportPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.import;
+                    }
+
+                    SettingsPage {
+
+                        width: parent.width;
+
+                        height: parent.height;
+                        active: AppState.page == Page.settings;
+                    }
+                }
+            }
+        }
+
+        QuickView {
+            x: 0;
+            width: root.width;
+            y: title-bar.height;
+            height: root.height - title-bar.height;
+            origin-x: 0;
+            origin-y: title-bar.height;
+        }
+
+        // Menus: a click anywhere outside closes them.
+        if AppState.menu-open: TouchArea {
+            pointer-event(event) => {
+                if event.kind == PointerEventKind.down {
+                    AppState.menu-open = false;
+                }
+            }
+        }
+
+        menu := PopupMenu {
+            x: max(Theme.unit * 2, min(AppState.menu-x, root.width - self.width - Theme.unit * 2));
+            y: max(Theme.unit * 2, min(AppState.menu-y, root.height - self.height - Theme.unit * 2));
+            list-width: AppState.menu-width;
+            shown: AppState.menu-open;
+            entries: AppState.menu-entries;
+            check-space: AppState.menu-checks;
+            highlighted: AppState.submenu-of;
+            activated(index) => {
+                AppState.menu-activated(index);
+            }
+            hovered(index, row-y) => {
+                submenu.row-y = row-y;
+                if AppState.menu-entries[index].submenu {
+                    AppState.submenu-requested(index);
+                } else {
+                    AppState.submenu-of = -1;
+                }
+            }
+        }
+
+        submenu := PopupMenu {
+            property <length> row-y;
+            property <bool> fits-right: menu.x + menu.width + self.width < root.width;
+            x: self.fits-right ? menu.x + menu.width - Theme.unit : menu.x - self.width + Theme.unit;
+            y: max(Theme.unit * 2, min(menu.y + self.row-y - Theme.unit, root.height - self.height - Theme.unit * 2));
+            list-width: Theme.sidebar-width * 0.75;
+            shown: AppState.menu-open && AppState.submenu-of >= 0;
+            entries: AppState.submenu-entries;
+            check-space: true;
+            activated(index) => {
+                AppState.submenu-activated(index);
+            }
+        }
+
+        MessageDialog {
+            width: root.width;
+            height: root.height;
+        }
+
+        AddLibraryDialog {
+            width: root.width;
+            height: root.height;
+        }
+
+        Rectangle {
+            x: (root.width - self.width) / 2;
+            y: root.height - self.height - Theme.unit * 6 + (AppState.toast-shown ? 0 : Theme.unit * 4);
+            width: toast-text.preferred-width + Theme.unit * 8;
+            height: Theme.control-height + Theme.unit * 2;
+            opacity: AppState.toast-shown ? 1 : 0;
+            visible: self.opacity > 0;
+            animate y, opacity { duration: Theme.anim; easing: Motion.easing; }
+            border-radius: self.height / 2;
+            background: Theme.color.text;
+            drop-shadow-blur: Theme.unit * 6;
+            drop-shadow-color: Theme.color.scrim.transparentize(50%);
+            toast-text := Text {
+                text: AppState.toast;
+                color: Theme.color.bg;
+                font-size: Theme.font-size;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+            }
+        }
+
+        // Thin outline, so the frameless window doesn't blend into what's behind it.
+        if !root.maximized: Rectangle {
+            border-width: Theme.hairline;
+            border-color: Theme.color.border;
+        }
+    }
+
+    init => {
+        keys.focus();
+    }
+}

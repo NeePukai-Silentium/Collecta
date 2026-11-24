@@ -1,0 +1,331 @@
+import { Theme, Motion } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { AppState, ImportLibrary } from "../state.slint";
+import { Icon } from "../components/icon.slint";
+import { IconButton } from "../components/icon-button.slint";
+import { Button, ButtonKind } from "../components/button.slint";
+import { CheckBox } from "../components/checkbox.slint";
+import { ProgressBar } from "../components/progress-bar.slint";
+import { TagChip } from "../components/tag-chip.slint";
+import { ScrollArea } from "../components/scroll-area.slint";
+import { PageFrame, PageHeader, SectionTitle, Card } from "../components/page.slint";
+
+// A list of folders with a remove button on each row. Also used by the "Add library" dialog.
+export component FolderList {
+    in property <[string]> folders;
+    in property <image> icon;
+    in property <string> empty-text;
+    callback remove(index: int);
+
+    VerticalLayout {
+        for folder[index] in root.folders: Rectangle {
+            height: Theme.control-height;
+            border-radius: Theme.radius-small;
+            background: row.has-hover ? Theme.color.surface-hover : transparent;
+            animate background { duration: Theme.anim; easing: Motion.easing; }
+            row := TouchArea { }
+            HorizontalLayout {
+                padding-left: Theme.unit * 2;
+                spacing: Theme.unit * 2;
+                Icon {
+                    y: (parent.height - self.height) / 2;
+                    source: root.icon;
+                    colorize: Theme.color.text-muted;
+                }
+
+                Text {
+                    horizontal-stretch: 1;
+                    text: folder;
+                    color: Theme.color.text;
+                    font-size: Theme.font-size;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                IconButton {
+                    icon: Icons.x;
+                    opacity: row.has-hover || self.has-hover ? 1 : 0;
+                    clicked => {
+                        root.remove(index);
+                    }
+                }
+            }
+        }
+        if root.folders.length == 0: Text {
+            height: Theme.control-height;
+            text: root.empty-text;
+            color: Theme.color.text-muted;
+            font-size: Theme.font-size;
+            vertical-alignment: center;
+        }
+    }
+}
+
+component LibrarySources inherits Card {
+    in property <ImportLibrary> library;
+    in property <int> index;
+
+    VerticalLayout {
+        padding: Theme.unit * 4;
+        spacing: Theme.unit * 3;
+        HorizontalLayout {
+            spacing: Theme.unit * 2;
+            Icon {
+                y: (parent.height - self.height) / 2;
+                source: Icons.library;
+                colorize: Theme.color.accent;
+            }
+
+            Text {
+                text: root.library.name;
+                color: Theme.color.text;
+                font-size: Theme.font-size;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+
+            Text {
+                horizontal-stretch: 1;
+                text: root.library.count;
+                color: Theme.color.text-muted;
+                font-size: Theme.font-size;
+                vertical-alignment: center;
+            }
+
+            Button {
+                kind: ButtonKind.ghost;
+                icon: Icons.trash-2;
+                text: "Удалить библиотеку";
+                clicked => {
+                    AppState.library-remove(root.index);
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: Theme.unit * 6;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: Theme.unit * 2;
+                Text {
+                    text: "Источники";
+                    color: Theme.color.text-muted;
+                    font-size: Theme.font-size;
+                }
+
+                FolderList {
+                    folders: root.library.sources;
+                    icon: Icons.folder;
+                    empty-text: "Нет папок";
+                    remove(folder) => {
+                        AppState.folder-remove(root.index, false, folder);
+                    }
+                }
+
+                HorizontalLayout {
+                    alignment: start;
+                    Button {
+                        kind: ButtonKind.ghost;
+                        icon: Icons.plus;
+                        text: "Добавить папку";
+                        clicked => {
+                            AppState.folder-add(root.index, false);
+                        }
+                    }
+                }
+            }
+
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: Theme.unit * 2;
+                Text {
+                    text: "Исключённые папки";
+                    color: Theme.color.text-muted;
+                    font-size: Theme.font-size;
+                }
+
+                FolderList {
+                    folders: root.library.excluded;
+                    icon: Icons.folder-x;
+                    empty-text: "Нет исключений";
+                    remove(folder) => {
+                        AppState.folder-remove(root.index, true, folder);
+                    }
+                }
+
+                HorizontalLayout {
+                    alignment: start;
+                    Button {
+                        kind: ButtonKind.ghost;
+                        icon: Icons.plus;
+                        text: "Исключить папку";
+                        clicked => {
+                            AppState.folder-add(root.index, true);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component ImportPage {
+    in property <bool> active;
+
+    PageFrame {
+        active: root.active;
+        width: root.width;
+        height: root.height;
+
+        ScrollArea {
+
+            width: parent.width;
+
+            height: parent.height;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: parent.width;
+                padding: Theme.unit * 6;
+                spacing: Theme.unit * 6;
+                PageHeader {
+                    title: "Импорт и сканирование";
+                    subtitle: "Файлы остаются в своих папках — Collecta только запоминает, где они лежат.";
+                    if AppState.library >= 0: TagChip {
+                        y: (parent.height - self.height) / 2;
+                        text: "Только «" + AppState.libraries[AppState.library].name + "»";
+                        selected: true;
+                        removable: true;
+                        removed => {
+                            AppState.select-library(-1);
+                        }
+                    }
+                }
+
+                Card {
+                    VerticalLayout {
+                        padding: Theme.unit * 4;
+                        spacing: Theme.unit * 3;
+                        SectionTitle {
+                            text: "Сканирование";
+                        }
+
+                        Text {
+                            text: "Форматы: JPG, PNG, GIF, BMP, WEBP, TIFF";
+                            color: Theme.color.text-muted;
+                            font-size: Theme.font-size;
+                        }
+
+                        HorizontalLayout {
+                            spacing: Theme.unit * 6;
+                            alignment: start;
+                            CheckBox {
+                                text: "Вложенные папки";
+                                checked <=> AppState.scan-recursive;
+                            }
+
+                            CheckBox {
+                                text: "Пропускать системные и временные папки";
+                                checked <=> AppState.scan-skip-system;
+                            }
+                        }
+
+                        if AppState.scanning: VerticalLayout {
+                            spacing: Theme.unit * 2;
+                            HorizontalLayout {
+                                spacing: Theme.unit * 3;
+                                Text {
+                                    horizontal-stretch: 1;
+                                    text: AppState.scan-folder;
+                                    color: Theme.color.text-muted;
+                                    font-size: Theme.font-size;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
+
+                                Text {
+                                    text: AppState.scan-counter;
+                                    color: Theme.color.text;
+                                    font-size: Theme.font-size;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            ProgressBar {
+                                progress: AppState.scan-progress;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: Theme.unit * 2;
+                            alignment: start;
+                            if !AppState.scanning: Button {
+                                kind: ButtonKind.primary;
+                                icon: Icons.refresh-cw;
+                                text: AppState.scan-finished ? "Сканировать снова" : "Сканировать";
+                                clicked => {
+                                    AppState.scan-start();
+                                }
+                            }
+                            if AppState.scanning: Button {
+                                text: "Отменить";
+                                clicked => {
+                                    AppState.scan-cancel();
+                                }
+                            }
+                        }
+
+                        if AppState.scan-finished: VerticalLayout {
+                            spacing: Theme.unit * 2;
+                            HorizontalLayout {
+                                spacing: Theme.unit * 2;
+                                Icon {
+                                    y: (parent.height - self.height) / 2;
+                                    source: Icons.circle-check;
+                                    colorize: Theme.color.accent;
+                                }
+
+                                Text {
+                                    text: AppState.scan-result;
+                                    color: Theme.color.text;
+                                    font-size: Theme.font-size;
+                                }
+                            }
+
+                            for file in AppState.missing-files: HorizontalLayout {
+                                spacing: Theme.unit * 2;
+                                Icon {
+                                    y: (parent.height - self.height) / 2;
+                                    source: Icons.triangle-alert;
+                                    colorize: Theme.color.danger;
+                                }
+
+                                Text {
+                                    text: file;
+                                    color: Theme.color.text-muted;
+                                    font-size: Theme.font-size;
+                                    overflow: elide;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                for library[index] in AppState.import-libraries: LibrarySources {
+                    library: library;
+                    index: index;
+                }
+
+                HorizontalLayout {
+                    alignment: start;
+                    Button {
+                        icon: Icons.plus;
+                        text: "Добавить библиотеку";
+                        clicked => {
+                            AppState.add-library();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
